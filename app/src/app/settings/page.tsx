@@ -35,6 +35,8 @@ export default function SettingsPage() {
   const [staffLoading, setStaffLoading] = useState(false);
   const [childLoading, setChildLoading] = useState(false);
   const [actLoading, setActLoading] = useState(false);
+  const [seedLoading, setSeedLoading] = useState(false);
+  const [seedMessage, setSeedMessage] = useState("");
 
   useEffect(() => {
     checkAuth();
@@ -138,6 +140,23 @@ export default function SettingsPage() {
     setActivities((prev) => prev.filter((a) => a.id !== id));
   }
 
+  async function seedDefaults() {
+    setSeedLoading(true);
+    setSeedMessage("");
+    try {
+      const res = await fetch("/api/activities/seed", { method: "POST" });
+      const data = await res.json();
+      setSeedMessage(data.message);
+      if (data.added > 0) {
+        await loadAll();
+      }
+    } catch {
+      setSeedMessage("エラーが発生しました");
+    } finally {
+      setSeedLoading(false);
+    }
+  }
+
   const domainActivities = activities.filter((a) => a.domain === activeDomain);
 
   if (loading) {
@@ -186,7 +205,21 @@ export default function SettingsPage() {
 
         {/* 活動管理 */}
         <section className="bg-white rounded-xl shadow p-4">
-          <h3 className="font-bold text-gray-700 mb-3">活動管理（5領域）</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold text-gray-700">活動管理（5領域）</h3>
+            <div className="flex items-center gap-2">
+              {seedMessage && (
+                <span className="text-xs text-green-600">{seedMessage}</span>
+              )}
+              <button
+                onClick={seedDefaults}
+                disabled={seedLoading}
+                className="text-xs px-3 py-1.5 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 transition"
+              >
+                {seedLoading ? "追加中..." : "デフォルト活動を追加"}
+              </button>
+            </div>
+          </div>
 
           {/* 領域タブ */}
           <div className="flex flex-wrap gap-2 mb-4">

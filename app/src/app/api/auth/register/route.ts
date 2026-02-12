@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, createToken } from "@/lib/auth";
+import { defaultActivities } from "@/lib/defaultActivities";
 
 export async function POST(request: NextRequest) {
   const { name, loginId, password } = await request.json();
@@ -14,6 +15,17 @@ export async function POST(request: NextRequest) {
   const store = await prisma.store.create({
     data: { name, loginId, password: hashedPassword },
   });
+
+  // デフォルト活動を新規店舗に登録
+  if (defaultActivities.length > 0) {
+    await prisma.activity.createMany({
+      data: defaultActivities.map((a) => ({
+        name: a.name,
+        domain: a.domain,
+        storeId: store.id,
+      })),
+    });
+  }
 
   const token = createToken({ storeId: store.id, storeName: store.name });
 
