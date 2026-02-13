@@ -16,10 +16,11 @@ model Store {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  staff      Staff[]
-  children   Child[]
-  activities Activity[]
-  dailyPlans DailyPlan[]
+  staff            Staff[]
+  children         Child[]
+  activities       Activity[]
+  hiddenActivities HiddenActivity[]
+  dailyPlans       DailyPlan[]
 }
 
 // スタッフ
@@ -44,7 +45,7 @@ model Child {
   @@index([storeId])
 }
 
-// 活動（5領域に紐づく活動名）
+// カスタム活動（店舗が独自に追加した活動のみ）
 model Activity {
   id       String @id @default(cuid())
   name     String
@@ -53,6 +54,18 @@ model Activity {
   store    Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@index([storeId, domain])
+}
+
+// 非表示にしたデフォルト活動
+model HiddenActivity {
+  id       String @id @default(cuid())
+  name     String
+  domain   String
+  storeId  String
+  store    Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, domain, name])
+  @@index([storeId])
 }
 
 // 日案（作成済み日報）

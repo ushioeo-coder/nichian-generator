@@ -21,6 +21,7 @@ interface Activity {
   id: string;
   name: string;
   domain: string;
+  isDefault: boolean;
 }
 
 export default function SettingsPage() {
@@ -35,8 +36,8 @@ export default function SettingsPage() {
   const [staffLoading, setStaffLoading] = useState(false);
   const [childLoading, setChildLoading] = useState(false);
   const [actLoading, setActLoading] = useState(false);
-  const [seedLoading, setSeedLoading] = useState(false);
-  const [seedMessage, setSeedMessage] = useState("");
+  const [restoreLoading, setRestoreLoading] = useState(false);
+  const [restoreMessage, setRestoreMessage] = useState("");
 
   useEffect(() => {
     checkAuth();
@@ -72,11 +73,6 @@ export default function SettingsPage() {
     const data = await res.json();
     setStoreName(data.storeName);
     setLoading(false);
-
-    // 活動が0件の場合、デフォルト活動を自動登録
-    if (data.activityCount === 0) {
-      await fetch("/api/activities/seed", { method: "POST" });
-    }
   }
 
   async function addStaff(name: string) {
@@ -145,20 +141,20 @@ export default function SettingsPage() {
     setActivities((prev) => prev.filter((a) => a.id !== id));
   }
 
-  async function seedDefaults() {
-    setSeedLoading(true);
-    setSeedMessage("");
+  async function restoreDefaults() {
+    setRestoreLoading(true);
+    setRestoreMessage("");
     try {
       const res = await fetch("/api/activities/seed", { method: "POST" });
       const data = await res.json();
-      setSeedMessage(data.message);
-      if (data.added > 0) {
+      setRestoreMessage(data.message);
+      if (data.restored > 0) {
         await loadAll();
       }
     } catch {
-      setSeedMessage("エラーが発生しました");
+      setRestoreMessage("エラーが発生しました");
     } finally {
-      setSeedLoading(false);
+      setRestoreLoading(false);
     }
   }
 
@@ -213,15 +209,15 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-gray-700">活動管理（5領域）</h3>
             <div className="flex items-center gap-2">
-              {seedMessage && (
-                <span className="text-xs text-green-600">{seedMessage}</span>
+              {restoreMessage && (
+                <span className="text-xs text-green-600">{restoreMessage}</span>
               )}
               <button
-                onClick={seedDefaults}
-                disabled={seedLoading}
+                onClick={restoreDefaults}
+                disabled={restoreLoading}
                 className="text-xs px-3 py-1.5 bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 transition"
               >
-                {seedLoading ? "追加中..." : "デフォルト活動を追加"}
+                {restoreLoading ? "復元中..." : "非表示を復元"}
               </button>
             </div>
           </div>
@@ -249,7 +245,7 @@ export default function SettingsPage() {
               type="text"
               value={newActivityName}
               onChange={(e) => setNewActivityName(e.target.value)}
-              placeholder={`${DOMAINS.find((d) => d.key === activeDomain)?.label}の活動名`}
+              placeholder={`${DOMAINS.find((d) => d.key === activeDomain)?.label}のカスタム活動名`}
               className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <button
@@ -266,7 +262,7 @@ export default function SettingsPage() {
             <p className="text-gray-400 text-sm">読み込み中...</p>
           ) : domainActivities.length === 0 ? (
             <p className="text-gray-400 text-sm">
-              この領域の活動が登録されていません
+              この領域の活動がありません
             </p>
           ) : (
             <ul className="space-y-1 max-h-60 overflow-y-auto">
@@ -275,12 +271,19 @@ export default function SettingsPage() {
                   key={activity.id}
                   className="flex items-center justify-between py-1.5 px-2 bg-gray-50 rounded text-sm"
                 >
-                  <span>{activity.name}</span>
+                  <span>
+                    {activity.name}
+                    {!activity.isDefault && (
+                      <span className="ml-1.5 text-xs text-indigo-500 font-medium">
+                        (カスタム)
+                      </span>
+                    )}
+                  </span>
                   <button
                     onClick={() => deleteActivity(activity.id)}
                     className="text-red-400 hover:text-red-600 text-xs transition"
                   >
-                    削除
+                    {activity.isDefault ? "非表示" : "削除"}
                   </button>
                 </li>
               ))}

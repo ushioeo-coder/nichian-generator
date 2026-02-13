@@ -64,11 +64,6 @@ export default function Home() {
     const data = await res.json();
     setStoreName(data.storeName);
     setLoading(false);
-
-    // 活動が0件の場合、デフォルト活動を自動登録
-    if (data.activityCount === 0) {
-      await fetch("/api/activities/seed", { method: "POST" });
-    }
   }
 
   async function handleLogout() {
