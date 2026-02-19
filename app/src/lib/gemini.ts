@@ -1,8 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+function getModel() {
+  return new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "").getGenerativeModel({ model: "gemini-1.5-flash" });
+}
 
 export async function generatePurpose(activityName: string, domain: string): Promise<string> {
   const domainLabel = getDomainLabel(domain);
@@ -14,7 +14,7 @@ export async function generatePurpose(activityName: string, domain: string): Pro
 
 具体的な療育目標を含めて記述してください。`;
 
-  const result = await model.generateContent(prompt);
+  const result = await getModel().generateContent(prompt);
   return result.response.text();
 }
 
@@ -40,7 +40,7 @@ export async function generateFlow(
 
 各項目に簡単な説明を付けてください。`;
 
-  const result = await model.generateContent(prompt);
+  const result = await getModel().generateContent(prompt);
   return result.response.text();
 }
 
@@ -59,7 +59,7 @@ export async function generateStaffActions(
 
 メインスタッフ、サブスタッフ${staffCount > 2 ? "、各メンバー" : ""}それぞれの具体的な役割と動きを記述してください。`;
 
-  const result = await model.generateContent(prompt);
+  const result = await getModel().generateContent(prompt);
   return result.response.text();
 }
 
@@ -76,7 +76,7 @@ export async function generatePreparations(
 
 箇条書きで準備物を列挙してください。`;
 
-  const result = await model.generateContent(prompt);
+  const result = await getModel().generateContent(prompt);
   return result.response.text();
 }
 

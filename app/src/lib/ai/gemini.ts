@@ -2,7 +2,9 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { dailyPlanAiResponseSchema, DailyPlanAiResponseParsed } from "./schemas";
 import type { DailyPlanAiRequest } from "@/types/dailyPlanAi";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+function getGenAI() {
+  return new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+}
 
 const modelName = process.env.GEMINI_MODEL ?? "gemini-1.5-pro";
 
@@ -30,7 +32,7 @@ function extractJson(text: string): string {
 export async function generateDailyPlanDraft(
   req: DailyPlanAiRequest
 ): Promise<DailyPlanAiResponseParsed> {
-  const model = genAI.getGenerativeModel({ model: modelName });
+  const model = getGenAI().getGenerativeModel({ model: modelName });
   const domainLabel = DOMAIN_LABELS[req.domain] ?? req.domain;
   const activityList = req.activityNames.join("、");
 

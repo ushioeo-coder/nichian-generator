@@ -7,8 +7,27 @@ import {
   generatePreparations,
 } from "@/lib/gemini";
 import { generateDailyPlanDraft } from "@/lib/ai/gemini";
+import fs from "fs";
+import path from "path";
+
+function loadEnvLocal() {
+  if (process.env.GEMINI_API_KEY) return;
+  try {
+    const envPath = path.join(process.cwd(), ".env.local");
+    const content = fs.readFileSync(envPath, "utf8");
+    for (const line of content.split("\n")) {
+      const match = line.match(/^([^=]+)=(.*)$/);
+      if (match) {
+        const key = match[1].trim();
+        const val = match[2].trim().replace(/^"|"$/g, "");
+        if (!process.env[key]) process.env[key] = val;
+      }
+    }
+  } catch {}
+}
 
 export async function POST(request: NextRequest) {
+  loadEnvLocal();
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "未認証" }, { status: 401 });
 
