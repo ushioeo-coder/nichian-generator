@@ -44,8 +44,13 @@ export async function POST(request: NextRequest) {
       );
     }
     if (!process.env.GEMINI_API_KEY) {
+      const cwd = process.cwd();
+      const envPath = path.join(cwd, ".env.local");
+      let fileExists = false;
+      let fileContent = "";
+      try { fileContent = fs.readFileSync(envPath, "utf8").substring(0, 100); fileExists = true; } catch(e) { fileContent = String(e); }
       return NextResponse.json(
-        { error: "GEMINI_API_KEY が設定されていません" },
+        { error: "GEMINI_API_KEY が設定されていません", debug: { cwd, envPath, fileExists, fileContent } },
         { status: 500 }
       );
     }
