@@ -47,3 +47,6 @@ next-env.d.ts
 # prisma
 *.db
 *.db-journal
+
+# old app subdirectory (contents moved to root)
+/app
