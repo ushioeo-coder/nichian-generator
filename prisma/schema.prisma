@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// 店舗
+model Store {
+  id        String   @id @default(cuid())
+  name      String
+  loginId   String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  staff            Staff[]
+  children         Child[]
+  activities       Activity[]
+  hiddenActivities HiddenActivity[]
+  dailyPlans       DailyPlan[]
+}
+
+// スタッフ
+model Staff {
+  id        String   @id @default(cuid())
+  name      String
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([storeId])
+}
+
+// 児童
+model Child {
+  id        String   @id @default(cuid())
+  name      String
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([storeId])
+}
+
+// カスタム活動（店舗が独自に追加した活動のみ）
+model Activity {
+  id       String @id @default(cuid())
+  name     String
+  domain   String // 領域: health, exercise, cognition, language, social
+  storeId  String
+  store    Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, domain])
+}
+
+// 非表示にしたデフォルト活動
+model HiddenActivity {
+  id       String @id @default(cuid())
+  name     String
+  domain   String
+  storeId  String
+  store    Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, domain, name])
+  @@index([storeId])
+}
+
+// 日案（作成済み日報）
+model DailyPlan {
+  id            String   @id @default(cuid())
+  date          DateTime
+  storeId       String
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  // スタッフ配置（JSON: { main: string, sub: string, members: string[] }）
+  staffConfig   String
+
+  // 選択された児童名（JSON: string[]）
+  childrenNames String
+
+  // 活動情報
+  activityDomain String
+  activityName   String
+  purpose        String  // 目的・狙い
+
+  // スケジュール
+  flow           String  // 流れ
+  staffActions   String  // スタッフの動き
+  preparations   String  // 準備物
+
+  // 連絡事項
+  notes          String  @default("")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([storeId, date])
+}
