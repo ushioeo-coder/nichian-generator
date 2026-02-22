@@ -60,8 +60,8 @@ export async function generateDailyPlanDraft(
 
 制約:
 - scheduleは到着〜帰宅の流れを6〜10項目
-- staffPlanは${staffLabels.map((l) => `"${l}"`).join("・")}それぞれ1項目ずつ
-- preparationsは5〜10項目の文字列配列
+- staffPlanは【活動】で選択された5領域活動の実施中における各スタッフの役割・動きを記述すること（到着・帰宅など活動以外の場面は含めない）。${staffLabels.map((l) => `"${l}"`).join("・")}それぞれ1項目ずつ
+- preparationsは【活動】で選択された5領域活動を実施するために必要な準備物・環境整備のみを5〜10項目の文字列配列で記述すること（日常的な受け入れ準備などは含めない）
 - timeはHH:MM形式（例: "15:00"）
 - 全フィールドを日本語で記述`;
 
