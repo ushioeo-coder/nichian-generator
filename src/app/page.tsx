@@ -20,6 +20,24 @@ export default function Home() {
   const [storeName, setStoreName] = useState("");
   const [loading, setLoading] = useState(true);
 
+  // 過去の日案
+  interface SavedPlan {
+    id: string;
+    date: string;
+    activityName: string;
+    activityDomain: string;
+    staffConfig: string;
+    childrenNames: string;
+    purpose: string;
+    flow: string;
+    staffActions: string;
+    preparations: string;
+    notes: string;
+  }
+  const [pastPlans, setPastPlans] = useState<SavedPlan[]>([]);
+  const [loadingPlans, setLoadingPlans] = useState(false);
+  const [showPastPlans, setShowPastPlans] = useState(false);
+
   // 日案データ
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [staffList, setStaffList] = useState<StaffItem[]>([]);
@@ -108,6 +126,42 @@ export default function Home() {
     if (subStaff) count++;
     count += memberStaff.filter((m) => m).length;
     return Math.max(count, 1);
+  }
+
+  // ── 過去の日案取得・読み込み ─────────────────────────────
+  async function fetchPastPlans() {
+    setLoadingPlans(true);
+    try {
+      const res = await fetch("/api/daily-plans");
+      if (res.ok) {
+        setPastPlans(await res.json());
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoadingPlans(false);
+    }
+  }
+
+  function loadPlan(plan: SavedPlan) {
+    const staffConfig = JSON.parse(plan.staffConfig) as { main?: string; sub?: string; members?: string[] };
+    const children = JSON.parse(plan.childrenNames) as string[];
+
+    setDate(plan.date.split("T")[0]);
+    setMainStaff(staffConfig.main || "");
+    setSubStaff(staffConfig.sub || "");
+    setMemberStaff(staffConfig.members || []);
+    setSelectedChildren(children);
+    setSelectedDomain(plan.activityDomain);
+    setSelectedActivity(plan.activityName);
+    setPurpose(plan.purpose);
+    setFlow(plan.flow);
+    setStaffActions(plan.staffActions);
+    setPreparations(plan.preparations);
+    setNotes(plan.notes);
+    setUseDraftMode(false);
+    setAiDraft(null);
+    setShowPastPlans(false);
   }
 
   // ── 個別フィールドAI生成（既存） ──────────────────────────
@@ -368,6 +422,44 @@ export default function Home() {
           />
         </section>
 
+        {/* 過去の日案 */}
+        <section className="bg-white rounded-xl shadow p-4">
+          <button
+            onClick={() => {
+              setShowPastPlans((prev) => !prev);
+              if (!showPastPlans && pastPlans.length === 0) fetchPastPlans();
+            }}
+            className="flex items-center justify-between w-full text-sm font-bold text-gray-700"
+          >
+            <span>過去の日案を読み込む</span>
+            <span className="text-gray-400 text-xs">{showPastPlans ? "▲ 閉じる" : "▼ 開く"}</span>
+          </button>
+          {showPastPlans && (
+            <div className="mt-3">
+              {loadingPlans ? (
+                <p className="text-sm text-gray-400">読み込み中...</p>
+              ) : pastPlans.length === 0 ? (
+                <p className="text-sm text-gray-400">保存済みの日案はありません。</p>
+              ) : (
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {pastPlans.map((plan) => (
+                    <button
+                      key={plan.id}
+                      onClick={() => loadPlan(plan)}
+                      className="w-full text-left px-3 py-2 rounded-lg border border-gray-200 hover:border-indigo-400 hover:bg-indigo-50 transition text-sm"
+                    >
+                      <span className="font-medium text-gray-700">
+                        {new Date(plan.date).toLocaleDateString("ja-JP", { year: "numeric", month: "long", day: "numeric" })}
+                      </span>
+                      <span className="ml-2 text-gray-500">{plan.activityName}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+
         {/* スタッフ配置 */}
         <section className="bg-white rounded-xl shadow p-4">
           <h2 className="text-sm font-bold text-gray-700 mb-3">スタッフ配置</h2>
@@ -529,10 +621,10 @@ export default function Home() {
           />
         </section>
 
-        {/* 流れ（時刻付き） */}
+        {/* 流れ */}
         <section className="bg-white rounded-xl shadow p-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold text-gray-700">流れ（時刻付き）</h2>
+            <h2 className="text-sm font-bold text-gray-700">流れ</h2>
             <div className="flex items-center gap-3">
               {useDraftMode && (
                 <button
