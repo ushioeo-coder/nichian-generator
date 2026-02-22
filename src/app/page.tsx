@@ -196,7 +196,7 @@ export default function Home() {
 
   // ── 構造化データ → 保存用文字列変換 ──────────────────────
   function serializeSchedule(items: ScheduleItem[]): string {
-    return items.map((s) => `${s.time} ${s.title}\n${s.detail}`).join("\n\n");
+    return items.map((s) => `${s.title}\n${s.detail}`).join("\n\n");
   }
 
   function serializeStaffPlan(items: StaffPlanItem[]): string {
@@ -289,7 +289,7 @@ export default function Home() {
   }
 
   function addScheduleItem() {
-    setSchedule((prev) => [...prev, { time: "", title: "", detail: "" }]);
+    setSchedule((prev) => [...prev, { title: "", detail: "" }]);
   }
 
   function removeScheduleItem(i: number) {
@@ -556,14 +556,7 @@ export default function Home() {
             /* 構造化編集UI */
             <div className="space-y-2">
               {schedule.map((item, i) => (
-                <div key={i} className="grid grid-cols-[80px_1fr_auto] gap-2 items-start">
-                  <input
-                    type="text"
-                    value={item.time}
-                    onChange={(e) => updateScheduleItem(i, "time", e.target.value)}
-                    placeholder="HH:MM"
-                    className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
+                <div key={i} className="grid grid-cols-[1fr_auto] gap-2 items-start">
                   <div className="space-y-1">
                     <input
                       type="text"

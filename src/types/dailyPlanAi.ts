@@ -14,7 +14,6 @@ export interface DailyPlanAiRequest {
 // --- レスポンス内部型 ---
 
 export interface ScheduleItem {
-  time: string;   // "HH:MM"
   title: string;
   detail: string;
 }

@@ -50,7 +50,7 @@ export async function generateDailyPlanDraft(
 {
   "purposeAim": "目的・狙いを3〜5行で記述",
   "schedule": [
-    { "time": "HH:MM", "title": "項目名", "detail": "具体的な内容" }
+    { "title": "項目名", "detail": "具体的な内容" }
   ],
   "staffPlan": [
     { "staffLabel": "メイン", "assignment": "担当内容", "notes": "留意点" }
@@ -62,7 +62,6 @@ export async function generateDailyPlanDraft(
 - scheduleは到着〜帰宅の流れを6〜10項目
 - staffPlanは【活動】で選択された5領域活動の実施中における各スタッフの役割・動きを記述すること（到着・帰宅など活動以外の場面は含めない）。${staffLabels.map((l) => `"${l}"`).join("・")}それぞれ1項目ずつ
 - preparationsは【活動】で選択された5領域活動を実施するために必要な準備物・環境整備のみを5〜10項目の文字列配列で記述すること（日常的な受け入れ準備などは含めない）
-- timeはHH:MM形式（例: "15:00"）
 - 全フィールドを日本語で記述`;
 
   const result = await model.generateContent(prompt);
