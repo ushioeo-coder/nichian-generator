@@ -19,9 +19,7 @@ export default function LoginPage() {
 
     try {
       const url = isRegister ? "/api/auth/register" : "/api/auth/login";
-      const body = isRegister
-        ? { loginId, password, name: storeName }
-        : { loginId, password };
+      const body = { loginId, password, name: storeName };
 
       const res = await fetch(url, {
         method: "POST",
@@ -74,21 +72,19 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {isRegister && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                店舗名
-              </label>
-              <input
-                type="text"
-                value={storeName}
-                onChange={(e) => setStoreName(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                required
-                placeholder="例：○○教室"
-              />
-            </div>
-          )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              店舗名
+            </label>
+            <input
+              type="text"
+              value={storeName}
+              onChange={(e) => setStoreName(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              required
+              placeholder="例：○○教室"
+            />
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               ログインID
