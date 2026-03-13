@@ -62,11 +62,28 @@ export async function generateDailyPlanDraft(
 
 制約:
 - scheduleは到着〜帰宅の流れを記述すること。
-- 活動（${activityList}）の開始時間は施設によって異なりますが、以下の【形式】に基づく所要時間を確保してください：
-    - 集団：約30分
-    - グループ：1組10分 × ${req.groupCount || 1}組
-    - 個別：1人5分 × ${req.childCount}人
-- 活動のタイトルは必ず「活動：${activityList}」としてください。
+- 【形式】に応じて、活動部分のscheduleを以下のルールで構成してください：
+
+  ■ 集団の場合：
+    - { time: "HH:MM", title: "活動：${activityList}", detail: "..." } を1行追加（所要時間約30分）
+
+  ■ グループの場合（${req.groupCount || 1}グループ）：
+    - まず { time: "HH:MM", title: "活動：${activityList}（説明・準備）", detail: "..." } を1行追加
+    - 続けて以下を10分間隔で${req.groupCount || 1}行追加すること（必ず${req.groupCount || 1}行、省略・まとめ禁止）：
+      { time: "HH:MM", title: "グループ1", detail: "順番にシミュレーションを行う" }
+      { time: "HH:MM", title: "グループ2", detail: "..." }
+      ...
+      { time: "HH:MM", title: "グループ${req.groupCount || 1}", detail: "..." }
+
+  ■ 個別の場合（${req.childCount}人）：
+    - まず { time: "HH:MM", title: "活動：${activityList}（説明・準備）", detail: "..." } を1行追加
+    - 続けて以下を5分間隔で${req.childCount}行追加すること（必ず${req.childCount}行、省略・まとめ禁止）：
+      { time: "HH:MM", title: "1人目", detail: "個別に活動を実施" }
+      { time: "HH:MM", title: "2人目", detail: "..." }
+      ...
+      { time: "HH:MM", title: "${req.childCount}人目", detail: "..." }
+
+- 活動の開始時間は17:00からの固定スケジュールに間に合うよう逆算して設定すること。
 - 17:00以降は必ず以下のスケジュールを固定で含めてください。AIが勝手に時間を変えたり項目を削ったりしないでください：
     - 17:00 片付け
     - 17:05 帰宅準備（トイレ、持ち物整理、送迎準備）
