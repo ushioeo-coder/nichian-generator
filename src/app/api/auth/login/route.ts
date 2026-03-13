@@ -3,16 +3,20 @@ import { prisma } from "@/lib/prisma";
 import { verifyPassword, createToken } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
-  const { loginId, password } = await request.json();
+  const { loginId, password, name } = await request.json();
 
   const store = await prisma.store.findUnique({ where: { loginId } });
   if (!store) {
-    return NextResponse.json({ error: "ログインIDまたはパスワードが正しくありません" }, { status: 401 });
+    return NextResponse.json({ error: "店舗名、ログインIDまたはパスワードが正しくありません" }, { status: 401 });
+  }
+
+  if (store.name !== name) {
+    return NextResponse.json({ error: "店舗名、ログインIDまたはパスワードが正しくありません" }, { status: 401 });
   }
 
   const valid = await verifyPassword(password, store.password);
   if (!valid) {
-    return NextResponse.json({ error: "ログインIDまたはパスワードが正しくありません" }, { status: 401 });
+    return NextResponse.json({ error: "店舗名、ログインIDまたはパスワードが正しくありません" }, { status: 401 });
   }
 
   const token = createToken({ storeId: store.id, storeName: store.name });

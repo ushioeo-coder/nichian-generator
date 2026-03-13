@@ -3,10 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword, createToken } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const name = body.name || body.storeName;
-  const loginId = body.loginId;
-  const password = body.password;
+  const { name, loginId, password } = await request.json();
 
   const existing = await prisma.store.findUnique({ where: { loginId } });
   if (existing) {

@@ -12,6 +12,11 @@ export async function POST(request: NextRequest) {
   const ws = workbook.addWorksheet("日案");
 
   // 列幅設定
+  ws.getColumn(1).width = 15.5;
+  ws.getColumn(2).width = 11.3;
+  ws.getColumn(3).width = 11.3;
+  ws.getColumn(4).width = 11.3;
+  ws.getColumn(5).width = 11.3;
   ws.getColumn(6).width = 11.3;
 
   // A4プロパティ設定
@@ -83,7 +88,6 @@ export async function POST(request: NextRequest) {
   ws.getCell("A6").fill = headerFill;
   ws.getCell("A6").font = { size: 9, bold: true };
 
-  // const childrenNames: string[] = data.childrenNames || []; // 重複のため削除
   const childCells = ["B6", "C6", "D6", "E6", "F6", "B7", "C7", "D7", "E7", "F7", "B8", "C8", "D8", "E8", "F8"];
   childrenNames.forEach((name: string, i: number) => {
     if (i < childCells.length) {
@@ -125,6 +129,7 @@ export async function POST(request: NextRequest) {
   ws.mergeCells("D12:E32");
   ws.mergeCells("F12:F32");
 
+  ws.getCell("B12").value = data.flow || "";
   ws.getCell("B12").alignment = { wrapText: true, vertical: "top", shrinkToFit: true };
   ws.getCell("B12").font = { size: 10 };
   ws.getCell("D12").value = data.staffActions || "";
@@ -138,13 +143,13 @@ export async function POST(request: NextRequest) {
   ws.getCell("A33").value = "連絡事項";
   ws.getCell("A33").fill = headerFill;
 
-  ws.mergeCells("B33:F35"); // 少し余裕を持たせるために36から35に修正
+  ws.mergeCells("B33:F37");
   ws.getCell("B33").value = data.notes || "";
   ws.getCell("B33").alignment = { wrapText: true, vertical: "top", shrinkToFit: true };
   ws.getCell("B33").font = { size: 10 };
 
   // 罫線適用
-  for (let row = 1; row <= 36; row++) {
+  for (let row = 1; row <= 37; row++) {
     for (let col = 1; col <= 6; col++) {
       const cell = ws.getCell(row, col);
       cell.border = thinBorder;
