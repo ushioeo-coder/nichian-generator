@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
   // ── 統合JSON生成（新方式） ──────────────────────────────
   if (type === "all") {
-    const { activityNames, domain, childCount, staffCount } = body;
+    const { activityNames, domain, childCount, staffCount, activityFlow, groupCount } = body;
     if (!activityNames?.length || !domain) {
       return NextResponse.json(
         { error: "activityNames と domain は必須です" },
@@ -66,6 +66,8 @@ export async function POST(request: NextRequest) {
         domain,
         childCount: childCount ?? 1,
         staffCount: staffCount ?? 1,
+        activityFlow,
+        groupCount,
       });
       return NextResponse.json(draft);
     } catch (error) {

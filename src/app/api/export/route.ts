@@ -12,12 +12,18 @@ export async function POST(request: NextRequest) {
   const ws = workbook.addWorksheet("日案");
 
   // 列幅設定
-  ws.getColumn(1).width = 15.5;
-  ws.getColumn(2).width = 11.3;
-  ws.getColumn(3).width = 11.3;
-  ws.getColumn(4).width = 11.3;
-  ws.getColumn(5).width = 11.3;
   ws.getColumn(6).width = 11.3;
+
+  // A4プロパティ設定
+  ws.pageSetup.paperSize = 9; // A4
+  ws.pageSetup.fitToPage = true;
+  ws.pageSetup.fitToWidth = 1;
+  ws.pageSetup.fitToHeight = 1;
+  ws.pageSetup.margins = {
+    left: 0.5, right: 0.5,
+    top: 0.5, bottom: 0.5,
+    header: 0, footer: 0
+  };
 
   const thinBorder: Partial<ExcelJS.Borders> = {
     top: { style: "thin" },
@@ -34,9 +40,10 @@ export async function POST(request: NextRequest) {
 
   // 行1: スタッフヘッダー
   ws.mergeCells("B1:F1");
-  ws.getCell("B1").value = "スタッフ";
-  ws.getCell("B1").font = { bold: true, size: 12 };
-  ws.getCell("B1").alignment = { horizontal: "center" };
+  const staffCount = (data.staffConfig?.main ? 1 : 0) + (data.staffConfig?.sub ? 1 : 0) + (data.staffConfig?.members?.length || 0);
+  ws.getCell("B1").value = `スタッフ（合計 ${staffCount} 名）`;
+  ws.getCell("B1").font = { bold: true, size: 11 };
+  ws.getCell("B1").alignment = { horizontal: "center", vertical: "middle" };
   ws.getCell("B1").fill = headerFill;
   ws.getRow(1).height = 18.5;
 
@@ -70,11 +77,13 @@ export async function POST(request: NextRequest) {
 
   // 行6-8: 児童名
   ws.mergeCells("A6:A8");
-  ws.getCell("A6").value = "児童名";
-  ws.getCell("A6").alignment = { horizontal: "center", vertical: "middle" };
-  ws.getCell("A6").fill = headerFill;
-
   const childrenNames: string[] = data.childrenNames || [];
+  ws.getCell("A6").value = `児童名\n(全 ${childrenNames.length} 名)`;
+  ws.getCell("A6").alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+  ws.getCell("A6").fill = headerFill;
+  ws.getCell("A6").font = { size: 9, bold: true };
+
+  // const childrenNames: string[] = data.childrenNames || []; // 重複のため削除
   const childCells = ["B6", "C6", "D6", "E6", "F6", "B7", "C7", "D7", "E7", "F7", "B8", "C8", "D8", "E8", "F8"];
   childrenNames.forEach((name: string, i: number) => {
     if (i < childCells.length) {
@@ -86,7 +95,9 @@ export async function POST(request: NextRequest) {
   ws.getCell("A9").value = "活動";
   ws.getCell("A9").fill = headerFill;
   ws.mergeCells("B9:F9");
-  ws.getCell("B9").value = `${data.activityName || ""}`;
+  const flowType = data.activityFlow ? `【${data.activityFlow}${data.activityFlow === "グループ" ? ` ${data.groupCount}組` : ""}】` : "";
+  ws.getCell("B9").value = `活動：${data.activityName || ""}${flowType}`;
+  ws.getCell("B9").font = { size: 11, bold: true };
 
   // 行10: 目的・狙い
   ws.getCell("A10").value = "目的・狙い";
@@ -114,20 +125,23 @@ export async function POST(request: NextRequest) {
   ws.mergeCells("D12:E32");
   ws.mergeCells("F12:F32");
 
-  ws.getCell("B12").value = data.flow || "";
-  ws.getCell("B12").alignment = { wrapText: true, vertical: "top" };
+  ws.getCell("B12").alignment = { wrapText: true, vertical: "top", shrinkToFit: true };
+  ws.getCell("B12").font = { size: 10 };
   ws.getCell("D12").value = data.staffActions || "";
-  ws.getCell("D12").alignment = { wrapText: true, vertical: "top" };
+  ws.getCell("D12").alignment = { wrapText: true, vertical: "top", shrinkToFit: true };
+  ws.getCell("D12").font = { size: 10 };
   ws.getCell("F12").value = data.preparations || "";
-  ws.getCell("F12").alignment = { wrapText: true, vertical: "top" };
+  ws.getCell("F12").alignment = { wrapText: true, vertical: "top", shrinkToFit: true };
+  ws.getCell("F12").font = { size: 10 };
 
   // 行33: 連絡事項
   ws.getCell("A33").value = "連絡事項";
   ws.getCell("A33").fill = headerFill;
 
-  ws.mergeCells("B33:F36");
+  ws.mergeCells("B33:F35"); // 少し余裕を持たせるために36から35に修正
   ws.getCell("B33").value = data.notes || "";
-  ws.getCell("B33").alignment = { wrapText: true, vertical: "top" };
+  ws.getCell("B33").alignment = { wrapText: true, vertical: "top", shrinkToFit: true };
+  ws.getCell("B33").font = { size: 10 };
 
   // 罫線適用
   for (let row = 1; row <= 36; row++) {

@@ -30,6 +30,8 @@ export default function Home() {
   const [selectedChildren, setSelectedChildren] = useState<string[]>([]);
   const [selectedDomain, setSelectedDomain] = useState("");
   const [selectedActivity, setSelectedActivity] = useState("");
+  const [activityFlow, setActivityFlow] = useState<"集団" | "個別" | "グループ">("集団");
+  const [groupCount, setGroupCount] = useState(6);
 
   // テキスト系フィールド（既存・個別AI生成でも利用）
   const [purpose, setPurpose] = useState("");
@@ -173,6 +175,8 @@ export default function Home() {
           domain: selectedDomain,
           childCount: selectedChildren.length || 1,
           staffCount: getStaffCount(),
+          activityFlow,
+          groupCount: activityFlow === "グループ" ? groupCount : undefined,
         }),
       });
       const data = await res.json();
@@ -230,6 +234,8 @@ export default function Home() {
           childrenNames: selectedChildren,
           activityDomain: selectedDomain,
           activityName: selectedActivity,
+          activityFlow,
+          groupCount: activityFlow === "グループ" ? groupCount : undefined,
           purpose,
           flow: getFlowForSave(),
           staffActions: getStaffActionsForSave(),
@@ -260,6 +266,8 @@ export default function Home() {
           childrenNames: selectedChildren,
           activityDomain: selectedDomain,
           activityName: selectedActivity,
+          activityFlow,
+          groupCount: activityFlow === "グループ" ? groupCount : undefined,
           purpose,
           flow: getFlowForSave(),
           staffActions: getStaffActionsForSave(),
@@ -370,7 +378,12 @@ export default function Home() {
 
         {/* スタッフ配置 */}
         <section className="bg-white rounded-xl shadow p-4">
-          <h2 className="text-sm font-bold text-gray-700 mb-3">スタッフ配置</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-bold text-gray-700">スタッフ配置</h2>
+            <span className="text-xs font-medium px-2 py-1 bg-indigo-50 text-indigo-700 rounded-full">
+              合計 {getStaffCount()} 名
+            </span>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs text-gray-500 mb-1">メイン</label>
@@ -432,7 +445,12 @@ export default function Home() {
 
         {/* 児童選択 */}
         <section className="bg-white rounded-xl shadow p-4">
-          <h2 className="text-sm font-bold text-gray-700 mb-3">児童選択</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-bold text-gray-700">児童選択</h2>
+            <span className="text-xs font-medium px-2 py-1 bg-indigo-50 text-indigo-700 rounded-full">
+              合計 {selectedChildren.length} 名
+            </span>
+          </div>
           {childList.length === 0 ? (
             <p className="text-gray-400 text-sm">
               児童が登録されていません。設定画面から追加してください。
@@ -476,6 +494,44 @@ export default function Home() {
             selectedDomain={selectedDomain}
             selectedActivity={selectedActivity}
           />
+
+          <div className="mt-6 space-y-4 pt-4 border-t border-gray-100">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">形式の選択</label>
+              <div className="flex gap-2">
+                {(["集団", "個別", "グループ"] as const).map((flow) => (
+                  <button
+                    key={flow}
+                    onClick={() => setActivityFlow(flow)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${
+                      activityFlow === flow
+                        ? "bg-indigo-600 text-white border-indigo-600"
+                        : "bg-white text-gray-600 border-gray-300 hover:border-indigo-400"
+                    }`}
+                  >
+                    {flow}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {activityFlow === "グループ" && (
+              <div className="animate-in fade-in slide-in-from-top-1">
+                <label className="block text-sm font-medium text-gray-600 mb-2 flex items-center gap-2">
+                  グループ数
+                  <span className="text-xs text-gray-400">（最大6枠まで）</span>
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={6}
+                  value={groupCount}
+                  onChange={(e) => setGroupCount(Number(e.target.value))}
+                  className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            )}
+          </div>
 
           {selectedActivity && (
             <div className="mt-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100 space-y-3">
