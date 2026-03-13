@@ -9,6 +9,10 @@ export interface DailyPlanAiRequest {
   childCount: number;
   /** スタッフ数 */
   staffCount: number;
+  /** 活動フロー */
+  activityFlow?: "集団" | "個別" | "グループ";
+  /** グループ数 */
+  groupCount?: number;
 }
 
 // --- レスポンス内部型 ---

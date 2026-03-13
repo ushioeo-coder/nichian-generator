@@ -37,12 +37,14 @@ export async function generateDailyPlanDraft(
   const activityList = req.activityNames.join("、");
 
   const staffLabels = buildStaffLabels(req.staffCount);
+  const flowType = req.activityFlow || "集団";
 
   const prompt = `あなたは放課後等デイサービスの熟練支援員です。
 以下の条件で日案の4項目をJSON形式のみで出力してください。説明文や前置きは一切不要です。
 
 【活動】${activityList}
 【領域】${domainLabel}
+【形式】${flowType}${req.groupCount ? `（${req.groupCount}グループ）` : ""}
 【参加児童数】${req.childCount}名
 【スタッフ】${staffLabels.join("・")}（計${req.staffCount}名）
 
@@ -59,9 +61,19 @@ export async function generateDailyPlanDraft(
 }
 
 制約:
-- scheduleは到着〜帰宅の流れを6〜10項目
-- staffPlanは【活動】で選択された5領域活動の実施中における各スタッフの役割・動きを記述すること（到着・帰宅など活動以外の場面は含めない）。${staffLabels.map((l) => `"${l}"`).join("・")}それぞれ1項目ずつ
-- preparationsは【活動】で選択された5領域活動を実施するために必要な準備物・環境整備のみを5〜10項目の文字列配列で記述すること（日常的な受け入れ準備などは含めない）
+- scheduleは到着〜帰宅の流れを記述すること。
+- 活動（${activityList}）の開始時間は施設によって異なりますが、以下の【形式】に基づく所要時間を確保してください：
+    - 集団：約30分
+    - グループ：1組10分 × ${req.groupCount || 1}組
+    - 個別：1人5分 × ${req.childCount}人
+- 活動のタイトルは必ず「活動：${activityList}」としてください。
+- 17:00以降は必ず以下のスケジュールを固定で含めてください。AIが勝手に時間を変えたり項目を削ったりしないでください：
+    - 17:00 片付け
+    - 17:05 帰宅準備（トイレ、持ち物整理、送迎準備）
+    - 17:15 帰りの会（振り返り、挨拶）
+    - 17:30 帰宅
+- staffPlanは【活動】実施中における各スタッフの役割・動きを記述すること（到着・帰宅など活動以外の場面は含めない）。${staffLabels.map((l) => `"${l}"`).join("・")}それぞれ1項目ずつ
+- preparationsは【活動】を実施するために必要な準備物を5〜10項目記述すること
 - timeはHH:MM形式（例: "15:00"）
 - 全フィールドを日本語で記述`;
 
