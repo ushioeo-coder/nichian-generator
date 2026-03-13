@@ -26,6 +26,87 @@ function extractJson(text: string): string {
   return text.slice(start, end + 1);
 }
 
+/** 分数を加算して { hour, minute } を返す */
+function addMinutes(h: number, m: number, mins: number): { h: number; m: number } {
+  const total = h * 60 + m + mins;
+  return { h: Math.floor(total / 60), m: total % 60 };
+}
+
+/** HH:MM 形式にフォーマット */
+function formatTime(h: number, m: number): string {
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+/**
+ * 到着〜帰宅まで完全なスケジュールをコードで生成する。
+ * AIには time/title を変更させず、detail のみ記述させる。
+ * 片付け17:00を遵守するため、活動時間に応じて自由時間を短縮する。
+ */
+function buildFullSchedule(
+  flowType: string,
+  activityList: string,
+  groupCount: number,
+  childCount: number
+): Array<{ time: string; title: string }> {
+  const FIXED_END = { h: 17, m: 0 };
+
+  // 活動所要時間を計算（説明準備 + 各グループ/人）
+  let activityMins: number;
+  if (flowType === "グループ") {
+    activityMins = 10 + groupCount * 10; // 説明10分 + グループ数×10分
+  } else if (flowType === "個別") {
+    activityMins = 5 + childCount * 5;   // 説明5分 + 人数×5分
+  } else {
+    activityMins = 30;                   // 集団: 30分
+  }
+
+  // 活動開始時刻 = 17:00 から逆算
+  const actStart = addMinutes(FIXED_END.h, FIXED_END.m, -activityMins);
+
+  // 到着(15:00)から活動開始までの空き時間
+  const availMins = actStart.h * 60 + actStart.m - 15 * 60;
+
+  const slots: Array<{ time: string; title: string }> = [];
+
+  // 到着は常に15:00固定
+  slots.push({ time: "15:00", title: "到着" });
+
+  // 空き時間に応じて到着〜活動前を組む（自由時間を短縮して活動時間を確保）
+  if (availMins >= 45) {
+    // はじまりの会(15分) + 自由時間
+    slots.push({ time: "15:15", title: "はじまりの会（出席確認、体調確認、今日の流れ説明）" });
+    slots.push({ time: "15:30", title: "自由時間" });
+  } else if (availMins >= 20) {
+    // 自由時間のみ
+    slots.push({ time: "15:15", title: "自由時間" });
+  }
+  // 20分未満: 到着後すぐ活動（スケジュールが詰まっている場合）
+
+  // 活動セクション（17:00から逆算して決定した時刻）
+  let cur = { h: actStart.h, m: actStart.m };
+  slots.push({ time: formatTime(cur.h, cur.m), title: `活動：${activityList}（説明・準備）` });
+
+  if (flowType === "グループ") {
+    for (let i = 1; i <= groupCount; i++) {
+      cur = addMinutes(cur.h, cur.m, 10);
+      slots.push({ time: formatTime(cur.h, cur.m), title: `グループ${i}` });
+    }
+  } else if (flowType === "個別") {
+    for (let i = 1; i <= childCount; i++) {
+      cur = addMinutes(cur.h, cur.m, 5);
+      slots.push({ time: formatTime(cur.h, cur.m), title: `${i}人目` });
+    }
+  }
+
+  // 固定終了部分（17:00以降は絶対変更なし）
+  slots.push({ time: "17:00", title: "片付け" });
+  slots.push({ time: "17:05", title: "帰宅準備（トイレ、持ち物整理、送迎準備）" });
+  slots.push({ time: "17:15", title: "帰りの会（振り返り、挨拶）" });
+  slots.push({ time: "17:30", title: "帰宅" });
+
+  return slots;
+}
+
 /**
  * 日案の4項目を1回のAPI呼び出しで統合JSON として生成する
  */
@@ -38,6 +119,16 @@ export async function generateDailyPlanDraft(
 
   const staffLabels = buildStaffLabels(req.staffCount);
   const flowType = req.activityFlow || "集団";
+  const fullSchedule = buildFullSchedule(
+    flowType,
+    activityList,
+    req.groupCount ?? 1,
+    req.childCount
+  );
+  // AIに渡すスケジュール枠（time・titleは確定済み、AIはdetailのみ記述する）
+  const scheduleTemplate = fullSchedule
+    .map((s) => `    { "time": "${s.time}", "title": "${s.title}", "detail": "" }`)
+    .join(",\n");
 
   const prompt = `あなたは放課後等デイサービスの熟練支援員です。
 以下の条件で日案の4項目をJSON形式のみで出力してください。説明文や前置きは一切不要です。
@@ -61,34 +152,10 @@ export async function generateDailyPlanDraft(
 }
 
 制約:
-- scheduleは到着〜帰宅の流れを記述すること。
-- 【形式】に応じて、活動部分のscheduleを以下のルールで構成してください：
-
-  ■ 集団の場合：
-    - { time: "HH:MM", title: "活動：${activityList}", detail: "..." } を1行追加（所要時間約30分）
-
-  ■ グループの場合（${req.groupCount || 1}グループ）：
-    - まず { time: "HH:MM", title: "活動：${activityList}（説明・準備）", detail: "..." } を1行追加
-    - 続けて以下を10分間隔で${req.groupCount || 1}行追加すること（必ず${req.groupCount || 1}行、省略・まとめ禁止）：
-      { time: "HH:MM", title: "グループ1", detail: "順番にシミュレーションを行う" }
-      { time: "HH:MM", title: "グループ2", detail: "..." }
-      ...
-      { time: "HH:MM", title: "グループ${req.groupCount || 1}", detail: "..." }
-
-  ■ 個別の場合（${req.childCount}人）：
-    - まず { time: "HH:MM", title: "活動：${activityList}（説明・準備）", detail: "..." } を1行追加
-    - 続けて以下を5分間隔で${req.childCount}行追加すること（必ず${req.childCount}行、省略・まとめ禁止）：
-      { time: "HH:MM", title: "1人目", detail: "個別に活動を実施" }
-      { time: "HH:MM", title: "2人目", detail: "..." }
-      ...
-      { time: "HH:MM", title: "${req.childCount}人目", detail: "..." }
-
-- 活動の開始時間は17:00からの固定スケジュールに間に合うよう逆算して設定すること。
-- 17:00以降は必ず以下のスケジュールを固定で含めてください。AIが勝手に時間を変えたり項目を削ったりしないでください：
-    - 17:00 片付け
-    - 17:05 帰宅準備（トイレ、持ち物整理、送迎準備）
-    - 17:15 帰りの会（振り返り、挨拶）
-    - 17:30 帰宅
+- scheduleの各項目のtime・titleは以下のとおりに完全固定（変更・追加・削除すべて禁止）。detailのみ、活動内容に合わせた具体的な内容を日本語で記述すること：
+[
+${scheduleTemplate}
+]
 - staffPlanは【活動】実施中における各スタッフの役割・動きを記述すること（到着・帰宅など活動以外の場面は含めない）。${staffLabels.map((l) => `"${l}"`).join("・")}それぞれ1項目ずつ
 - preparationsは【活動】を実施するために必要な準備物を5〜10項目記述すること
 - timeはHH:MM形式（例: "15:00"）
