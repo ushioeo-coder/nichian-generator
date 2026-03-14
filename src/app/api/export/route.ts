@@ -11,24 +11,31 @@ export async function POST(request: NextRequest) {
   const workbook = new ExcelJS.Workbook();
   const ws = workbook.addWorksheet("日案");
 
-  // ── 列幅設定（A4ポートレート幅 21cm に合わせて最適化）──────────────────
-  // 合計 ~104 unit ≈ A4幅に収まる
-  ws.getColumn(1).width = 14;   // ラベル列（日付・見出し）
-  ws.getColumn(2).width = 18;   // 流れ左 / スタッフ左
-  ws.getColumn(3).width = 18;   // 流れ右 / スタッフ右
-  ws.getColumn(4).width = 18;   // スタッフ動き左
-  ws.getColumn(5).width = 18;   // スタッフ動き右
-  ws.getColumn(6).width = 18;   // 準備物
+  // ── 列幅設定 ──────────────────────────────────────────────────────────────
+  // A4 印刷可能幅（余白 0.25" 時）の実ピクセル計算:
+  //   A4 = 8.27", 余白合計 0.5" → 印刷幅 7.77" × 96DPI = 746px
+  //   各列のピクセル幅 = NumChars × MDW + 5px_padding  (MDW = 7px for Calibri 11pt)
+  //   6列合計: total_chars × 7 + 30 ≈ 746  → total_chars ≈ 102
+  ws.getColumn(1).width = 8;    // 時間列
+  ws.getColumn(2).width = 18.8; // 流れ左
+  ws.getColumn(3).width = 18.8; // 流れ右
+  ws.getColumn(4).width = 18.8; // スタッフ動き左
+  ws.getColumn(5).width = 18.8; // スタッフ動き右
+  ws.getColumn(6).width = 18.8; // 準備物
+  // 合計: 8 + 18.8×5 = 102 units → (102×7+30) = 744px ≈ A4 印刷幅 746px
 
   // ── A4 印刷設定 ───────────────────────────────────────────────────────────
+  // 重要: scale=undefined にしないと ExcelJS がデフォルトで scale="100" を XML に書き込み、
+  //       fitToWidth が無視される（ExcelJS の既知の挙動）。
   ws.pageSetup.paperSize = 9;           // A4
   ws.pageSetup.orientation = "portrait";
   ws.pageSetup.fitToPage = true;
-  ws.pageSetup.fitToWidth = 1;          // 幅は1ページに収める
-  ws.pageSetup.fitToHeight = 0;         // 高さは縮小しない（内容に応じて自然な高さ）
+  ws.pageSetup.fitToWidth = 1;          // 横方向：1ページに収める
+  ws.pageSetup.fitToHeight = 0;         // 縦方向：制限なし（縦圧縮しない）
+  ws.pageSetup.scale = undefined as unknown as number; // ExcelJS デフォルトの scale="100" を消す
   ws.pageSetup.margins = {
-    left: 0.35, right: 0.35,
-    top: 0.35,  bottom: 0.35,
+    left: 0.25, right: 0.25,
+    top: 0.25,  bottom: 0.25,
     header: 0,  footer: 0,
   };
 
@@ -135,10 +142,7 @@ export async function POST(request: NextRequest) {
   ws.getCell("A9").font      = { bold: true };
   ws.getCell("A9").alignment = centerMiddle;
   ws.mergeCells("B9:F9");
-  const flowType = data.activityFlow
-    ? `【${data.activityFlow}${data.activityFlow === "グループ" ? ` ${data.groupCount}組` : ""}】`
-    : "";
-  ws.getCell("B9").value     = `活動：${data.activityName || ""}${flowType}`;
+  ws.getCell("B9").value     = `活動：${data.activityName || ""}`;
   ws.getCell("B9").font      = { size: 11, bold: true };
   ws.getCell("B9").alignment = { vertical: "middle", wrapText: true };
   ws.getRow(9).height = 22;
@@ -176,29 +180,78 @@ export async function POST(request: NextRequest) {
   ws.getRow(11).height = 18;
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 行12-32: スケジュール本体（21行 × 約17pt ≈ 357pt ≈ 12.6cm）
+  // 行12-32: スケジュール本体
+  // schedule 構造化データがあれば個別行で配置、なければ従来形式
   // ─────────────────────────────────────────────────────────────────────────
-  ws.mergeCells("A12:A32");
-  ws.mergeCells("B12:C32");
-  ws.mergeCells("D12:E32");
-  ws.mergeCells("F12:F32");
 
-  // 各行に高さを設定（合計でスケジュール内容が読める高さを確保）
-  for (let r = 12; r <= 32; r++) {
-    ws.getRow(r).height = 17;
+  if (data.schedule && Array.isArray(data.schedule) && data.schedule.length > 0) {
+    // 構造化スケジュールデータを使用 - 時間を A 列、内容を B-F 列に分割配置
+    let rowNum = 12;
+    for (const item of data.schedule) {
+      if (rowNum > 32) break;
+
+      // A列：時間
+      ws.getCell(rowNum, 1).value = item.time;
+      ws.getCell(rowNum, 1).alignment = centerMiddle;
+      ws.getCell(rowNum, 1).font = { size: 10 };
+      ws.getCell(rowNum, 1).border = thinBorder;
+
+      // B-C列：タイトル + 詳細（改行で結合）
+      const flowText = item.detail ? `${item.title}\n${item.detail}` : item.title;
+      ws.getCell(rowNum, 2).value = flowText;
+      ws.getCell(rowNum, 2).alignment = wrapTop;
+      ws.getCell(rowNum, 2).font = { size: 10 };
+      ws.getCell(rowNum, 2).border = thinBorder;
+
+      // D-E列、F列：1行目のみデータを配置（スタッフアクション・準備物は活動全体に対して統一）
+      if (rowNum === 12) {
+        ws.getCell(rowNum, 4).value = data.staffActions || "";
+        ws.getCell(rowNum, 4).alignment = wrapTop;
+        ws.getCell(rowNum, 4).font = { size: 10 };
+        ws.getCell(rowNum, 4).border = thinBorder;
+
+        ws.getCell(rowNum, 6).value = data.preparations || "";
+        ws.getCell(rowNum, 6).alignment = wrapTop;
+        ws.getCell(rowNum, 6).font = { size: 10 };
+        ws.getCell(rowNum, 6).border = thinBorder;
+      }
+
+      // 行の高さを動的に計算（テキスト量に応じて）
+      const textLength = flowText.length;
+      const lineCount = (flowText.match(/\n/g) || []).length + 1; // 改行数 + 1
+      const estimatedHeight = Math.max(22, 15 + lineCount * 12);
+      ws.getRow(rowNum).height = Math.min(60, estimatedHeight);
+
+      rowNum++;
+    }
+
+    // 残りの行（スケジュール行数が21未満の場合）をクリア
+    for (let r = rowNum; r <= 32; r++) {
+      ws.getRow(r).height = 22;
+    }
+  } else {
+    // 従来形式：テキスト一括配置（schedule データがない場合の互換性）
+    ws.mergeCells("A12:A32");
+    ws.mergeCells("B12:C32");
+    ws.mergeCells("D12:E32");
+    ws.mergeCells("F12:F32");
+
+    for (let r = 12; r <= 32; r++) {
+      ws.getRow(r).height = 22;
+    }
+
+    ws.getCell("B12").value     = data.flow || "";
+    ws.getCell("B12").alignment = wrapTop;
+    ws.getCell("B12").font      = { size: 10 };
+
+    ws.getCell("D12").value     = data.staffActions || "";
+    ws.getCell("D12").alignment = wrapTop;
+    ws.getCell("D12").font      = { size: 10 };
+
+    ws.getCell("F12").value     = data.preparations || "";
+    ws.getCell("F12").alignment = wrapTop;
+    ws.getCell("F12").font      = { size: 10 };
   }
-
-  ws.getCell("B12").value     = data.flow || "";
-  ws.getCell("B12").alignment = wrapTop;
-  ws.getCell("B12").font      = { size: 10 };
-
-  ws.getCell("D12").value     = data.staffActions || "";
-  ws.getCell("D12").alignment = wrapTop;
-  ws.getCell("D12").font      = { size: 10 };
-
-  ws.getCell("F12").value     = data.preparations || "";
-  ws.getCell("F12").alignment = wrapTop;
-  ws.getCell("F12").font      = { size: 10 };
 
   // ─────────────────────────────────────────────────────────────────────────
   // 行33-37: 連絡事項
@@ -214,6 +267,7 @@ export async function POST(request: NextRequest) {
   ws.getCell("B33").alignment = wrapTop;
   ws.getCell("B33").font      = { size: 10 };
 
+  // 18pt × 5行 = 90pt
   for (let r = 33; r <= 37; r++) {
     ws.getRow(r).height = 18;
   }

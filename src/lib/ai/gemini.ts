@@ -86,6 +86,7 @@ function buildFullSchedule(
   let cur = { h: actStart.h, m: actStart.m };
   slots.push({ time: formatTime(cur.h, cur.m), title: `活動：${activityList}（説明・準備）` });
 
+  // グループ・個別ごとにタイムスタンプとラベルを追加（詳細はAIが最初の1回のみ記述）
   if (flowType === "グループ") {
     for (let i = 1; i <= groupCount; i++) {
       cur = addMinutes(cur.h, cur.m, 10);
@@ -152,7 +153,9 @@ export async function generateDailyPlanDraft(
 }
 
 制約:
-- scheduleの各項目のtime・titleは以下のとおりに完全固定（変更・追加・削除すべて禁止）。detailのみ、活動内容に合わせた具体的な内容を日本語で記述すること：
+- scheduleの各項目のtime・titleは以下のとおりに完全固定（変更・追加・削除すべて禁止）。detailのみ、活動内容に合わせた具体的な内容を日本語で記述すること
+- 「活動：〜（説明・準備）」のentryのdetailに活動全体の流れ・内容を具体的に記述すること
+- 形式が「グループ」または「個別」の場合、「グループN」「N人目」のentryのdetailは空文字列（""）にすること（活動内容の繰り返し記述は不要）：
 [
 ${scheduleTemplate}
 ]
@@ -166,7 +169,18 @@ ${scheduleTemplate}
 
   const jsonStr = extractJson(raw);
   const parsed = JSON.parse(jsonStr);
-  return dailyPlanAiResponseSchema.parse(parsed);
+  const validated = dailyPlanAiResponseSchema.parse(parsed);
+
+  // グループN / N人目 スロットの detail をコードで強制的に空にする
+  // （AIがプロンプト指示を無視して繰り返し記述する場合への対策）
+  validated.schedule = validated.schedule.map((item) => {
+    if (/^グループ\d+$/.test(item.title) || /^\d+人目$/.test(item.title)) {
+      return { ...item, detail: "" };
+    }
+    return item;
+  });
+
+  return validated;
 }
 
 function buildStaffLabels(count: number): string[] {

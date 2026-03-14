@@ -269,6 +269,7 @@ export default function Home() {
           activityFlow,
           groupCount: activityFlow === "グループ" ? groupCount : undefined,
           purpose,
+          schedule: useDraftMode ? schedule : undefined, // 構造化スケジュールデータ
           flow: getFlowForSave(),
           staffActions: getStaffActionsForSave(),
           preparations: getPreparationsForSave(),
